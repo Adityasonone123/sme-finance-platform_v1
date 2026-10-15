@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Plus Jakarta Sans', 'Satoshi', 'Inter', sans-serif;
+  --font-mono: 'Geist Mono', monospace;
+
+  --color-canvas: #f5f5f5;
+  --color-paper: #ffffff;
+  --color-ink: #0a0a0a;
+  --color-charcoal: #171717;
+  --color-graphite: #404040;
+  --color-steel: #737373;
+  --color-ash: #a3a3a3;
+  --color-fog: #d4d4d4;
+  --color-mist: #e5e5e5;
+  --color-slate: #6b7280;
+
+  --color-ember: #ea580c;
+  --color-ember-glow: #fb923c;
+  --color-ember-deep: #7c2d12;
+  --color-ember-subtle: #fff7ed;
+
+  --color-signal-blue: #3b82f6;
+  --color-terminal-green: #22863a;
+  --color-alert-red: #d32f2f;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+::-webkit-scrollbar-thumb {
+  background: #d4d4d4;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #a3a3a3;
+}
+
+/* Typography Utility Classes */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom Card & Element Shadows */
+.shadow-subtle {
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px 0 rgba(0, 0, 0, 0.02);
+}
+
+.shadow-card {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+}
+
+.shadow-popover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+}

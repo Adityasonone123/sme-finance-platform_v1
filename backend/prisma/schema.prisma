@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------
+
+enum Role {
+  SUPPLIER
+  BUYER
+  FINANCIAL_INSTITUTION
+  ADMIN
+}
+
+enum CompanyType {
+  SME
+  CORPORATE
+  FINANCIAL_INSTITUTION
+}
+
+enum RelationshipStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum InvoiceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+  OVERDUE
+  PARTIALLY_PAID
+}
+
+enum PaymentStatus {
+  COMPLETED
+  PENDING
+  FAILED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  UPI
+  CHEQUE
+  CREDIT_CARD
+  OTHER
+}
+
+enum FinancingRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DISBURSED
+  REPAID
+}
+
+enum FinancingOfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum NotificationType {
+  PAYMENT_DUE
+  PAYMENT_OVERDUE
+  CASH_FLOW_WARNING
+  FINANCING
+  SYSTEM
+}
+
+enum CashFlowType {
+  INCOME
+  EXPENSE
+}
+
+// ------------------------------------------------------
+// MODELS
+// ------------------------------------------------------
+
+model User {
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  password      String
+  role          Role
+  companyId     String?
+  company       Company?       @relation(fields: [companyId], references: [id])
+  notifications Notification[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([companyId])
+  @@index([email])
+}
+
+model Company {
+  id                    String                @id @default(uuid())
+  name                  String
+  type                  CompanyType
+  gstNumber             String?
+  email                 String?
+  phone                 String?
+  address               String?
+  users                 User[]
+  supplierInvoices      Invoice[]             @relation("SupplierInvoices")
+  buyerInvoices         Invoice[]             @relation("BuyerInvoices")
+  buyerPaymentHistories BuyerPaymentHistory[]
+  cashFlowEntries       CashFlowEntry[]
+  financingRequests     FinancingRequest[]
+  supplierRelationships SupplierBuyer[]        @relation("SupplierRelationship")
+  buyerRelationships    SupplierBuyer[]        @relation("BuyerRelationship")
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+}
+
+model SupplierBuyer {
+  id         String             @id @default(uuid())
+  supplierId String
+  supplier   Company            @relation("SupplierRelationship", fields: [supplierId], references: [id])
+  buyerId    String
+  buyer      Company            @relation("BuyerRelationship", fields: [buyerId], references: [id])
+  status     RelationshipStatus @default(ACTIVE)
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @default(now()) @updatedAt
+
+  @@unique([supplierId, buyerId])
+  @@index([supplierId])
+  @@index([buyerId])
+  @@index([status])
+}
+
+model BuyerInvitation {
+  id                String   @id @default(uuid())
+  supplierCompanyId String
+  companyName       String
+  contactEmail      String
+  contactName       String?
+  status            String   @default("PENDING")
+  createdAt         DateTime @default(now())
+
+  @@index([supplierCompanyId])
+  @@index([contactEmail])
+}
+
+model Invoice {
+  id                    String                @id @default(uuid())
+  invoiceNumber         String                @unique
+  supplierId            String
+  supplier              Company               @relation("SupplierInvoices", fields: [supplierId], references: [id])
+  buyerId               String
+  buyer                 Company               @relation("BuyerInvoices", fields: [buyerId], references: [id])
+  amount                Decimal               @db.Decimal(15, 2)
+  issueDate             DateTime
+  dueDate               DateTime
+  paymentTerms          Int                   @default(30)
+  status                InvoiceStatus         @default(PENDING)
+  documentUrl           String?
+  payments              Payment[]
+  financingRequests     FinancingRequest[]
+  buyerPaymentHistories BuyerPaymentHistory[]
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([supplierId])
+  @@index([buyerId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  invoiceId       String
+  invoice         Invoice       @relation(fields: [invoiceId], references: [id])
+  amount          Decimal       @db.Decimal(15, 2)
+  paymentDate     DateTime
+  paymentMethod   PaymentMethod @default(BANK_TRANSFER)
+  status          PaymentStatus @default(COMPLETED)
+  referenceNumber String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([invoiceId])
+  @@index([paymentDate])
+}
+
+model FinancingRequest {
+  id              String                 @id @default(uuid())
+  supplierId      String
+  supplier        Company                @relation(fields: [supplierId], references: [id])
+  invoiceId       String
+  invoice         Invoice                @relation(fields: [invoiceId], references: [id])
+  requestedAmount Decimal                @db.Decimal(15, 2)
+  interestRate    Decimal?               @db.Decimal(5, 2)
+  tenureDays      Int?
+  status          FinancingRequestStatus @default(PENDING)
+  approvedAmount  Decimal?               @db.Decimal(15, 2)
+  offers          FinancingOffer[]
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  @@index([supplierId])
+  @@index([invoiceId])
+  @@index([status])
+}
+
+model FinancingOffer {
+  id                 String               @id @default(uuid())
+  financingRequestId String
+  financingRequest   FinancingRequest     @relation(fields: [financingRequestId], references: [id])
+  providerName       String
+  amount             Decimal              @db.Decimal(15, 2)
+  interestRate       Decimal              @db.Decimal(5, 2)
+  tenureDays         Int
+  processingFee      Decimal              @db.Decimal(15, 2)
+  totalRepayment     Decimal              @db.Decimal(15, 2)
+  status             FinancingOfferStatus @default(PENDING)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@index([financingRequestId])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model BuyerPaymentHistory {
+  id           String   @id @default(uuid())
+  buyerId      String
+  buyer        Company  @relation(fields: [buyerId], references: [id])
+  invoiceId    String
+  invoice      Invoice  @relation(fields: [invoiceId], references: [id])
+  expectedDays Int
+  actualDays   Int
+  delayDays    Int
+  paymentDate  DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([buyerId])
+  @@index([invoiceId])
+}
+
+model CashFlowEntry {
+  id          String       @id @default(uuid())
+  supplierId  String
+  supplier    Company      @relation(fields: [supplierId], references: [id])
+  type        CashFlowType
+  amount      Decimal      @db.Decimal(15, 2)
+  date        DateTime
+  description String?
+  source      String?
+  createdAt   DateTime     @default(now())
+
+  @@index([supplierId])
+  @@index([date])
+  @@index([type])
+}
